@@ -1,2 +1,4 @@
-# OpenTelemetry-Bridge-Sidecar-
-A Go reverse-proxy that adds W3C tracing to any HTTP service without code changes
+**OpenTelemetry Bridge Sidecar**  
+*A transparent, drop-in reverse-proxy that injects W3C-compliant distributed tracing into legacy HTTP services without touching their code.*
+
+This repo is a from-scratch Go implementation of the “transparent tracing bridge” pattern I’m borrowing from research papers, blogs and AI for the research breakdown. Instead of just translating APIs, it intercepts live TCP traffic, creates OpenTelemetry spans, propagates traceparent headers and exports OTLP traces/metrics while acting as a sidecar the original service never notices. I tailored the academic idea to a real problem I met while building a farmer-facing photo-upload service in rural Uganda: farmers on 2G links were getting silent timeouts, the NestJS backend had zero visibility and the system had no tracing in place. The sidecar now sits between the farmer’s HTTP POST and the monolith, automatically measuring upload latency, body size, retry storms and 502/504 rates and shipping them to any OTLP collector no code changes, no restarts. I’ll keep applying the implementation to other problems and scenarios to test it.
