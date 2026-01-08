@@ -1,10 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	cfg "opentelemetry/internal/config"
 )
@@ -21,22 +21,31 @@ func main() {
 		cfgPath = "internal/config/config.yaml"
 	}
 
+	absCfgPath, err := filepath.Abs(cfgPath)
+    if err != nil {
+        log.Fatalf("bad config path: %v", err)
+    }
+
 	config, err := cfg.LoadConfig(cfgPath)
 	if err != nil {
 		log.Fatalf("cannot load config: %v", err)
 	}
 
+	if err := cfg.WatchConfigFile(absCfgPath, func() {
+        if newCfg, err := cfg.LoadConfig(absCfgPath); err == nil {
+            config = newCfg
+            log.Printf("config reloaded: %+v", config)
+        } else {
+            log.Printf("reload failed: %v", err)
+        }
+    }); err != nil {
+        log.Printf("config watcher error: %v", err)
+    }
+
 	port := config.Port
 	if port == "" {
 		port = ":8080"
 	}
-
-	fmt.Printf("Configuration loaded:\n")
-	fmt.Printf("  Port: %s\n", port)
-	fmt.Printf("  URL: %s\n", config.URL)
-	fmt.Printf("  Endpoint: %s\n", config.Endpoint)
-	fmt.Printf("  Rate: %d\n", config.Rate)
-	fmt.Printf("  BufferSize: %d\n", config.BufferSize)
 
 	log.Printf("Service started on port %s", port)
 	log.Fatal(http.ListenAndServe(port, nil))
