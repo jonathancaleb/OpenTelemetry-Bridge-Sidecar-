@@ -12,7 +12,7 @@ The side-car pattern distilled by Mrinal in [“All about Sidecar”](https://me
 ## Quick start  
 ```bash
 # 1. clone & build
-git clone https://github.com/you/otel-bridge.git
+git clone 
 cd otel-bridge
 go run ./cmd/bridge -upstream http://localhost:3000 -otlp localhost:4317 -listen :8080
 
