@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -27,6 +28,28 @@ func NewReverseProxy(upstreamURL string) (*ReverseProxy, error) {
 	proxy.Director = func(req *http.Request) {
 		originalDirector(req)
 		req.Host = upstream.Host
+
+		// Add forwarding headers (these work)
+		req.Header.Set("X-Forwarded-Host", req.Host)
+		req.Header.Set("X-Real-IP", req.RemoteAddr)
+
+		// Remove sensitive headers from client request (works)
+		req.Header.Del("Authorization")
+
+		// Path rewriting (works)
+		req.URL.Path = "/caleb" + req.URL.Path
+	}
+
+	// ModifyResponse lets you modify the response from upstream
+	proxy.ModifyResponse = func(resp *http.Response) error {
+		// Add custom header (works)
+		resp.Header.Set("X-Proxy", "opentelemetry-sidecar")
+
+		// Remove upstream server identification (works)
+		resp.Header.Del("Server")
+
+		log.Printf("Response from upstream: %d %s", resp.StatusCode, resp.Status)
+		return nil
 	}
 
 	return &ReverseProxy{
