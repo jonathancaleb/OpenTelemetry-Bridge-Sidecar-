@@ -29,6 +29,9 @@ func NewReverseProxy(upstreamURL string) (*ReverseProxy, error) {
 		originalDirector(req)
 		req.Host = upstream.Host
 
+		// Inject custom sidecar version header
+		req.Header.Set("X-Sidecar-Version", "1.0")
+
 		// Add forwarding headers (these work)
 		req.Header.Set("X-Forwarded-Host", req.Host)
 		req.Header.Set("X-Real-IP", req.RemoteAddr)
@@ -38,6 +41,15 @@ func NewReverseProxy(upstreamURL string) (*ReverseProxy, error) {
 
 		// Path rewriting (works)
 		req.URL.Path = "/caleb" + req.URL.Path
+
+		// Log all request headers
+		log.Printf("=== Request Headers for %s %s ===", req.Method, req.URL.Path)
+		for name, values := range req.Header {
+			for _, value := range values {
+				log.Printf("  %s: %s", name, value)
+			}
+		}
+		log.Printf("=== End Headers ===")
 	}
 
 	// ModifyResponse lets you modify the response from upstream
@@ -60,7 +72,19 @@ func NewReverseProxy(upstreamURL string) (*ReverseProxy, error) {
 
 // ServeHTTP forwards the request to the upstream server.
 func (rp *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Wrap the request body with CountingReader to track bytes without breaking streaming
+	var countingReader *CountingReader
+	if r.Body != nil {
+		countingReader = NewCountingReader(r.Body)
+		r.Body = countingReader
+	}
+
 	rp.proxy.ServeHTTP(w, r)
+
+	// Log the byte count after the request is complete
+	if countingReader != nil {
+		log.Printf("Request body bytes read: %d", countingReader.BytesRead())
+	}
 }
 
 // Upstream returns the upstream URL.
